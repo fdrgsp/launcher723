@@ -2,20 +2,7 @@
 # macOS .app launcher — opens a file picker for .ipynb/.py files, then runs
 # with uvx juv run (Jupyter), uvx marimo edit --sandbox (marimo), or uv run (plain .py).
 
-# Outputs the single notebook path if exactly one .ipynb/.py exists in dir, else nothing.
-find_sole_notebook() {
-  local dir="$1"
-  local count=0
-  local match=""
-  for f in "$dir"/*.ipynb "$dir"/*.py; do
-    [ -f "$f" ] || continue
-    count=$((count + 1))
-    match="$f"
-  done
-  if [ "$count" -eq 1 ]; then echo "$match"; fi
-}
-
-# Outputs the run command for the given notebook path.
+# Outputs the run command for the given notebook file path.
 select_runner() {
   local notebook="$1"
   case "$notebook" in
@@ -28,57 +15,27 @@ select_runner() {
   esac
 }
 
-# Returns 0 if the path looks like a macOS App Translocation path.
-is_translocated() {
-  [[ "$1" == /private/var/folders/*/AppTranslocation/* ]]
-}
-
 _main() {
-  local SCRIPT_DIR BUNDLE_DIR APP_DIR
-  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-  BUNDLE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-  APP_DIR="$(dirname "$BUNDLE_DIR")"
-
-  # macOS App Translocation: quarantined apps silently run from a random temp path,
-  # so APP_DIR would point to an empty temp folder instead of the real location.
-  # Detect this and resolve the original .app path via Spotlight.
-  if is_translocated "$APP_DIR"; then
-    local ORIG_BUNDLE
-    # Spotlight lookup (fast, but requires indexing — may be empty on first run)
-    ORIG_BUNDLE="$(mdfind "kMDItemCFBundleIdentifier == 'com.launcher723.app'" 2>/dev/null | grep -v AppTranslocation | head -1)"
-    # Fallback: search common locations by name (handles the not-yet-indexed case)
-    if [ -z "$ORIG_BUNDLE" ] || [ ! -d "$ORIG_BUNDLE" ]; then
-      ORIG_BUNDLE="$(find "$HOME/Desktop" "$HOME/Downloads" "$HOME/Documents" "$HOME/Applications" \
-        -maxdepth 4 -name "launcher723.app" -not -path "*/AppTranslocation/*" 2>/dev/null | head -1)"
-    fi
-    [ -d "$ORIG_BUNDLE" ] && APP_DIR="$(dirname "$ORIG_BUNDLE")"
-  fi
-
   local NOTEBOOK
-  NOTEBOOK="$(find_sole_notebook "$APP_DIR")"
+  NOTEBOOK=$(osascript -e 'try
+    set theFile to choose file with prompt "Select a notebook (.ipynb or .py):" of type {"public.item"} default location (path to home folder)
+    return POSIX path of theFile
+  on error
+    return ""
+  end try' 2>/dev/null)
 
   if [ -z "$NOTEBOOK" ]; then
-    # Show file picker for .ipynb and .py files
-    NOTEBOOK=$(osascript -e 'try
-      set theFile to choose file with prompt "Select a notebook (.ipynb or .py):" of type {"public.item"} default location (path to home folder)
-      return POSIX path of theFile
-    on error
-      return ""
-    end try' 2>/dev/null)
-
-    if [ -z "$NOTEBOOK" ]; then
-      exit 0
-    fi
-
-    # Verify it's a supported file type
-    case "$NOTEBOOK" in
-      *.ipynb|*.py) ;;
-      *)
-        osascript -e 'display alert "Error" message "Please select a .ipynb or .py file."'
-        exit 1
-        ;;
-    esac
+    exit 0
   fi
+
+  # Verify it's a supported file type
+  case "$NOTEBOOK" in
+    *.ipynb|*.py) ;;
+    *)
+      osascript -e 'display alert "Error" message "Please select a .ipynb or .py file."'
+      exit 1
+      ;;
+  esac
 
   local NOTEBOOK_DIR NOTEBOOK_NAME RUN_CMD
   NOTEBOOK_DIR="$(dirname "$NOTEBOOK")"

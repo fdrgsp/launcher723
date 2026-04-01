@@ -31,34 +31,6 @@ def _go_test(go_available, run_filter):
     )
 
 
-# ── findNotebooks ──────────────────────────────────────────────────────────────
-# Go spaces → underscores in -run filter
-
-@pytest.mark.parametrize("case", [
-    "empty_dir",
-    "single_ipynb",
-    "single_py",
-    "ipynb_and_py",
-    "ignores_non-notebook_files",
-    "multiple_notebooks",
-])
-def test_find_notebooks(go_available, case):
-    _go_test(go_available, f"TestFindNotebooks/{case}")
-
-
-# ── picker behavior ────────────────────────────────────────────────────────────
-
-@pytest.mark.parametrize("case", [
-    "no_notebooks_shows_picker",
-    "one_notebook_skips_picker",
-    "two_notebooks_shows_picker",
-    "only_non-notebook_files_shows_picker",
-    "three_notebooks_shows_picker",
-])
-def test_picker_behavior(go_available, case):
-    _go_test(go_available, f"TestPickerBehavior/{case}")
-
-
 # ── selectRunner ───────────────────────────────────────────────────────────────
 
 @pytest.mark.parametrize("case", [

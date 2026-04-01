@@ -11,18 +11,6 @@ import (
 	"strings"
 )
 
-// findNotebooks returns the names of .ipynb and .py files found in dir.
-func findNotebooks(dir string) []string {
-	entries, _ := os.ReadDir(dir)
-	var matches []string
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".ipynb") || strings.HasSuffix(e.Name(), ".py") {
-			matches = append(matches, e.Name())
-		}
-	}
-	return matches
-}
-
 // selectRunner returns the run command for the given notebook file path.
 func selectRunner(notebookPath string) string {
 	if strings.HasSuffix(notebookPath, ".ipynb") {
@@ -36,46 +24,28 @@ func selectRunner(notebookPath string) string {
 }
 
 func main() {
-	exe, err := os.Executable()
+	// Show file picker for .ipynb and .py files
+	out, err := exec.Command("powershell", "-NoProfile", "-Command", `
+		Add-Type -AssemblyName System.Windows.Forms
+		$dlg = New-Object System.Windows.Forms.OpenFileDialog
+		$dlg.Title = "Select a notebook (.ipynb or .py)"
+		$dlg.Filter = "Notebooks (*.ipynb;*.py)|*.ipynb;*.py|Jupyter Notebooks (*.ipynb)|*.ipynb|Python Scripts (*.py)|*.py"
+		$dlg.InitialDirectory = [Environment]::GetFolderPath('UserProfile')
+		if ($dlg.ShowDialog() -eq 'OK') { $dlg.FileName } else { "" }
+	`).Output()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error showing file dialog: %v\n", err)
 		os.Exit(1)
 	}
-	exeDir := filepath.Dir(exe)
 
-	notebook := ""
-	notebookDir := exeDir
-
-	matches := findNotebooks(exeDir)
-	if len(matches) == 1 {
-		notebook = matches[0]
+	selected := strings.TrimSpace(string(out))
+	if selected == "" {
+		os.Exit(0)
 	}
 
-	if notebook == "" {
-		// Show file picker for .ipynb and .py files
-		out, err := exec.Command("powershell", "-NoProfile", "-Command", `
-			Add-Type -AssemblyName System.Windows.Forms
-			$dlg = New-Object System.Windows.Forms.OpenFileDialog
-			$dlg.Title = "Select a notebook (.ipynb or .py)"
-			$dlg.Filter = "Notebooks (*.ipynb;*.py)|*.ipynb;*.py|Jupyter Notebooks (*.ipynb)|*.ipynb|Python Scripts (*.py)|*.py"
-			$dlg.InitialDirectory = [Environment]::GetFolderPath('UserProfile')
-			if ($dlg.ShowDialog() -eq 'OK') { $dlg.FileName } else { "" }
-		`).Output()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error showing file dialog: %v\n", err)
-			os.Exit(1)
-		}
-
-		selected := strings.TrimSpace(string(out))
-		if selected == "" {
-			os.Exit(0)
-		}
-
-		notebookDir = filepath.Dir(selected)
-		notebook = filepath.Base(selected)
-	}
-
-	runCmd := selectRunner(filepath.Join(notebookDir, notebook))
+	notebookDir := filepath.Dir(selected)
+	notebook := filepath.Base(selected)
+	runCmd := selectRunner(selected)
 
 	// Bootstrap uv if needed, then run
 	tmpDir := os.TempDir()
