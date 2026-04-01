@@ -117,7 +117,3 @@ uv run my_script.py
 
 - An internet connection on first run (to fetch `uv` and packages — cached locally after that)
 - Nothing else — no Python, no conda, no pip
-
-## Looking to distribute notebooks to others?
-
-Check out [personal-notebook-launcher](https://github.com/fdrgsp/personal-notebook-launcher) — a GitHub template for packaging notebooks as self-contained `.app`/`.exe` downloads with an auto-generated landing page.
