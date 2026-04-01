@@ -5,11 +5,14 @@ requires-python = ">=3.10"
 dependencies = [
     "pytest>=8.0",
     "rich>=13.9.4",
-    "ruff>=0.8.3",
     "rust-just>=1.38.0",
-    "mypy>=1.13.0",
+]
+
+[dependency-groups]
+dev = [
     "prek>=0.3.5",
     "pyright>=1.1.392.post0",
+    "ruff>=0.8.3",
 ]
 
 [tool.pytest.ini_options]
@@ -56,14 +59,7 @@ ignore = [
 docstring-code-format = true
 skip-magic-trailing-comma = false # default is false
 
-# https://mypy.readthedocs.io/en/stable/config_file.html
-[tool.mypy]
-strict = true
-disallow_any_generics = false
-disallow_subclassing_any = false
-show_error_codes = true
-pretty = true
-
+# pyright
 [tool.pyright]
 include = ["src", "tests"]
 pythonVersion = "3.10"
