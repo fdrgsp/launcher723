@@ -17,8 +17,6 @@ Files must declare their dependencies using the [PEP 723](https://peps.python.or
 3. A file picker appears — select a `.ipynb` or `.py` file
 4. The file opens in your browser (notebooks) or terminal (scripts)
 
-**Shortcut:** place the `.app`/`.exe` next to a single `.ipynb` or `.py` file and it will run that file directly, skipping the file picker. If multiple files are present, the picker is shown.
-
 **First run only:** `uv` and all packages are downloaded and cached automatically. Subsequent runs are fast.
 
 ## Preparing your file
