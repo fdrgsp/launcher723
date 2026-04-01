@@ -11,6 +11,30 @@ import (
 	"strings"
 )
 
+// findNotebooks returns the names of .ipynb and .py files found in dir.
+func findNotebooks(dir string) []string {
+	entries, _ := os.ReadDir(dir)
+	var matches []string
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".ipynb") || strings.HasSuffix(e.Name(), ".py") {
+			matches = append(matches, e.Name())
+		}
+	}
+	return matches
+}
+
+// selectRunner returns the run command for the given notebook file path.
+func selectRunner(notebookPath string) string {
+	if strings.HasSuffix(notebookPath, ".ipynb") {
+		return "uvx juv run"
+	}
+	content, _ := os.ReadFile(notebookPath)
+	if strings.Contains(string(content), `"marimo`) {
+		return "uvx marimo edit --sandbox"
+	}
+	return "uv run"
+}
+
 func main() {
 	exe, err := os.Executable()
 	if err != nil {
@@ -19,20 +43,13 @@ func main() {
 	}
 	exeDir := filepath.Dir(exe)
 
-	// Check if exactly one notebook exists next to the .exe (skip picker if so)
 	notebook := ""
-	entries, _ := os.ReadDir(exeDir)
-	var matches []string
-	for _, e := range entries {
-		if strings.HasSuffix(e.Name(), ".ipynb") || strings.HasSuffix(e.Name(), ".py") {
-			matches = append(matches, e.Name())
-		}
-	}
+	notebookDir := exeDir
+
+	matches := findNotebooks(exeDir)
 	if len(matches) == 1 {
 		notebook = matches[0]
 	}
-
-	notebookDir := exeDir
 
 	if notebook == "" {
 		// Show file picker for .ipynb and .py files
@@ -58,16 +75,7 @@ func main() {
 		notebook = filepath.Base(selected)
 	}
 
-	// Choose the right command based on file extension (and marimo dependency for .py)
-	runCmd := "uvx juv run"
-	if strings.HasSuffix(notebook, ".py") {
-		content, _ := os.ReadFile(filepath.Join(notebookDir, notebook))
-		if strings.Contains(string(content), `"marimo`) {
-			runCmd = "uvx marimo edit --sandbox"
-		} else {
-			runCmd = "uv run"
-		}
-	}
+	runCmd := selectRunner(filepath.Join(notebookDir, notebook))
 
 	// Bootstrap uv if needed, then run
 	tmpDir := os.TempDir()
