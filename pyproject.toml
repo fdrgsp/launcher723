@@ -2,17 +2,15 @@
 name = "pyrunner"
 version = "0.1.0"
 requires-python = ">=3.10"
-dependencies = [
-    "pytest>=8.0",
-    "rich>=13.9.4",
-    "rust-just>=1.38.0",
-]
+dependencies = []
 
 [dependency-groups]
 dev = [
     "prek>=0.3.5",
+    "pytest>=8.0",
     "pyright>=1.1.392.post0",
     "ruff>=0.8.3",
+    "rust-just>=1.38.0",
 ]
 
 [tool.pytest.ini_options]
@@ -61,7 +59,7 @@ skip-magic-trailing-comma = false # default is false
 
 # pyright
 [tool.pyright]
-include = ["src", "tests"]
+include = ["_build_local.py", "tests"]
 pythonVersion = "3.10"
 enableExperimentalFeatures = true
 reportMissingImports = false
