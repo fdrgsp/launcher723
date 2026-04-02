@@ -19,7 +19,32 @@ Files must declare their dependencies using the [PEP 723](https://peps.python.or
 
 **First run only:** `uv` and all packages are downloaded and cached automatically. Subsequent runs are fast.
 
-## Preparing your file
+> [!IMPORTANT]
+> If `uv` is not already installed, the launcher will download and install it automatically on first run — no permission prompt will appear. On Windows, the launcher also silently sets the PowerShell execution policy to `RemoteSigned` for the current user to ensure the install script can run. On managed or enterprise machines where Group Policy enforces the execution policy, this may be blocked — in that case, an administrator will need to allow PowerShell scripts to run.
+
+### Platform notes
+
+**macOS Gatekeeper warning:** on first launch macOS may show a popup with only "Delete" or "Done" as options and block the app from opening. If this happens:
+
+1. Open **System Settings → Privacy & Security**
+2. Scroll to the bottom of the page
+3. You will see a message about the app being blocked — click **"Open Anyway"**
+
+**Windows SmartScreen warning:** on first launch Windows may show a warning that the app is from an unknown publisher. If this happens:
+
+1. Click **"More info"** on the warning dialog
+2. Click **"Run anyway"**
+
+### What users need
+
+- An internet connection on first run (to fetch `uv` and packages — cached locally after that)
+- Nothing else — no Python, no conda, no pip
+
+---
+
+## Preparing your files
+
+Under the hood, pyrunner uses [uv](https://docs.astral.sh/uv/) to run scripts in isolated environments. All files must declare their dependencies using [PEP 723](https://peps.python.org/pep-0723/) inline script metadata. Since `uv` is the runner, you can use any feature it supports for scripts — including [alternative indexes](https://docs.astral.sh/uv/guides/scripts/#using-alternative-package-indexes), [reproducibility pinning](https://docs.astral.sh/uv/guides/scripts/#improving-reproducibility), and the full [`[tool.uv]`](https://docs.astral.sh/uv/guides/scripts/) configuration block.
 
 ### Jupyter notebooks (`.ipynb`)
 
@@ -100,23 +125,24 @@ You can verify it works locally:
 uv run my_script.py
 ```
 
-## Platform notes
+#### Using `[tool.uv]` in script metadata
 
-**macOS Gatekeeper warning:** on first launch macOS may show a popup with only "Delete" or "Done" as options and block the app from opening. If this happens:
+Since pyrunner uses `uv` under the hood, you can use the [`[tool.uv]`](https://docs.astral.sh/uv/guides/scripts/) configuration block inside your script metadata for advanced features like alternative package indexes or reproducibility pinning:
 
-1. Open **System Settings → Privacy & Security**
-2. Scroll to the bottom of the page
-3. You will see a message about the app being blocked — click **"Open Anyway"**
+```python
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "numpy>=1.26",
+#   "pandas>=2.0",
+# ]
+#
+# [[tool.uv.index]]
+# url = "https://example.com/simple"
+#
+# [tool.uv]
+# exclude-newer = "2025-01-01T00:00:00Z"
+# ///
+```
 
-**Windows SmartScreen warning:** on first launch Windows may show a warning that the app is from an unknown publisher. If this happens:
-
-1. Click **"More info"** on the warning dialog
-2. Click **"Run anyway"**
-
-## What users need
-
-- An internet connection on first run (to fetch `uv` and packages — cached locally after that)
-- Nothing else — no Python, no conda, no pip
-
-> [!IMPORTANT]
-> If `uv` is not already installed, the launcher will download and install it automatically on first run — no permission prompt will appear. On Windows, the launcher also silently sets the PowerShell execution policy to `RemoteSigned` for the current user to ensure the install script can run. On managed or enterprise machines where Group Policy enforces the execution policy, this may be blocked — in that case, an administrator will need to allow PowerShell scripts to run.
+See the [uv scripts guide](https://docs.astral.sh/uv/guides/scripts/) for all supported options.
