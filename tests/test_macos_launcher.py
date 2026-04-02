@@ -1,11 +1,11 @@
-"""Tests for macos/launch — calls the real bash functions via subprocess."""
+"""Tests for macos/launch.sh — calls the real bash functions via subprocess."""
 
 import os
 import subprocess
 
 import pytest
 
-LAUNCH_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "macos", "launch")
+LAUNCH_SCRIPT = os.path.join(os.path.dirname(__file__), "..", "macos", "launch.sh")
 
 
 def _bash(cmd: str) -> str:
