@@ -56,9 +56,13 @@ jobs:
           cp macos/icon.icns "$TARGET/Resources/icon.icns"
           cd dist && zip -r "pyrunner-${TAG}-mac.zip" "pyrunner-${TAG}-mac/" && cd ..
 
-          # Windows (.exe)
-          cd windows && GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o "../dist/pyrunner-${TAG}-windows/pyrunner.exe" . && cd ..
-          cd dist && zip -r "pyrunner-${TAG}-windows.zip" "pyrunner-${TAG}-windows/" && cd ..
+          # Windows amd64 (.exe)
+          cd windows && GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o "../dist/pyrunner-${TAG}-windows-amd64/pyrunner.exe" . && cd ..
+          cd dist && zip -r "pyrunner-${TAG}-windows-amd64.zip" "pyrunner-${TAG}-windows-amd64/" && cd ..
+
+          # Windows arm64 (.exe)
+          cd windows && GOOS=windows GOARCH=arm64 go build -ldflags "-s -w" -o "../dist/pyrunner-${TAG}-windows-arm64/pyrunner.exe" . && cd ..
+          cd dist && zip -r "pyrunner-${TAG}-windows-arm64.zip" "pyrunner-${TAG}-windows-arm64/" && cd ..
 
       - name: Publish latest pre-release (main push)
         if: github.ref_type == 'branch'

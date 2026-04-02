@@ -8,9 +8,14 @@ select_runner() {
   case "$notebook" in
     *.ipynb) echo "uvx juv run" ;;
     *.py)
-      grep -q '"marimo' "$notebook" \
-        && echo "uvx marimo edit --sandbox" \
-        || echo "uv run"
+      # Match PEP 723 dependency patterns: "marimo", "marimo>=1", 'marimo', etc.
+      # Anchored to quote + "marimo" + (quote or version specifier) to avoid
+      # false positives on unrelated strings containing "marimo".
+      if grep -qE "[\"']marimo[\"'><=~!]" "$notebook"; then
+        echo "uvx marimo edit --sandbox"
+      else
+        echo "uv run"
+      fi
       ;;
   esac
 }
@@ -42,22 +47,29 @@ _main() {
   NOTEBOOK_NAME="$(basename "$NOTEBOOK")"
   RUN_CMD="$(select_runner "$NOTEBOOK")"
 
-  # Write a temp runner script to avoid escaping issues with osascript
+  # Build a temp runner script.  Values are injected via printf '%q' (shell-
+  # escaped) so that crafted filenames cannot break out of the script.
   local RUNNER
-  RUNNER=$(mktemp /tmp/notebook-launcher-runner.XXXXXX)
-  cat > "$RUNNER" << SCRIPT
-#!/bin/bash
-export PATH="\$HOME/.local/bin:\$PATH"
+  RUNNER=$(mktemp /tmp/pyrunner.XXXXXX)
+  {
+    echo '#!/bin/bash'
+    printf 'NB_DIR=%q\n'  "$NOTEBOOK_DIR"
+    printf 'NB_NAME=%q\n' "$NOTEBOOK_NAME"
+    printf 'NB_CMD=%q\n'  "$RUN_CMD"
+    printf 'NB_SELF=%q\n' "$RUNNER"
+    cat << 'BODY'
+export PATH="$HOME/.local/bin:$PATH"
 if ! command -v uv >/dev/null 2>&1; then
   echo "Installing uv..."
   curl -LsSf https://astral.sh/uv/install.sh | sh
-  export PATH="\$HOME/.local/bin:\$PATH"
+  export PATH="$HOME/.local/bin:$PATH"
 fi
-cd "$NOTEBOOK_DIR"
-echo "Launching $NOTEBOOK_NAME ..."
-$RUN_CMD "$NOTEBOOK_NAME"
-rm -f "$RUNNER"
-SCRIPT
+cd -- "$NB_DIR"
+echo "Launching $NB_NAME ..."
+eval "$NB_CMD" "$NB_NAME"
+rm -f "$NB_SELF"
+BODY
+  } > "$RUNNER"
   chmod +x "$RUNNER"
 
   open -a Terminal "$RUNNER"

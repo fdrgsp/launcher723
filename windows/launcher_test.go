@@ -16,7 +16,9 @@ var selectRunnerTests = []struct {
 	{"py with marimo dep uses marimo", "nb.py", "# dependencies = [\n#   \"marimo\",\n# ]", "uvx marimo edit --sandbox"},
 	{"py without marimo uses uv run", "script.py", "# dependencies = [\n#   \"numpy\",\n# ]", "uv run"},
 	{"py with empty content uses uv run", "script.py", "", "uv run"},
-	{"py with marimo in comment string uses marimo", "nb.py", "# requires = [\"marimo>=0.1\"]", "uvx marimo edit --sandbox"},
+	{"py with marimo version spec uses marimo", "nb.py", "# dependencies = [\n#   \"marimo>=0.1\",\n# ]", "uvx marimo edit --sandbox"},
+	{"py with single-quoted marimo uses marimo", "nb.py", "# dependencies = [\n#   'marimo',\n# ]", "uvx marimo edit --sandbox"},
+	{"py with unrelated marimo mention uses uv run", "script.py", "# this is not marimo_extra related", "uv run"},
 }
 
 func TestSelectRunner(t *testing.T) {

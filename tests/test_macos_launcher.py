@@ -35,6 +35,24 @@ select_runner_cases = [
         "uv run",
     ),
     ("py empty content", "script.py", "", "uv run"),
+    (
+        "py with marimo version spec",
+        "nb.py",
+        '# dependencies = [\n#   "marimo>=0.1",\n# ]',
+        "uvx marimo edit --sandbox",
+    ),
+    (
+        "py with single-quoted marimo",
+        "nb.py",
+        "# dependencies = [\n#   'marimo',\n# ]",
+        "uvx marimo edit --sandbox",
+    ),
+    (
+        "py with unrelated marimo mention",
+        "script.py",
+        "# this is not marimo_extra related",
+        "uv run",
+    ),
 ]
 
 
