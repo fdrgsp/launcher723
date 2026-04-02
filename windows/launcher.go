@@ -16,11 +16,40 @@ func selectRunner(notebookPath string) string {
 	if strings.HasSuffix(notebookPath, ".ipynb") {
 		return "uvx juv run"
 	}
-	content, _ := os.ReadFile(notebookPath)
-	if strings.Contains(string(content), `"marimo`) {
+	content, err := os.ReadFile(notebookPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: cannot read %s: %v\n", notebookPath, err)
+		return "uv run"
+	}
+	if isMarimo(string(content)) {
 		return "uvx marimo edit --sandbox"
 	}
 	return "uv run"
+}
+
+// isMarimo reports whether file content declares a marimo dependency.
+// It matches PEP 723 / TOML patterns like "marimo", 'marimo', "marimo>=1.0".
+func isMarimo(content string) bool {
+	for _, line := range strings.Split(content, "\n") {
+		trimmed := strings.TrimSpace(line)
+		// Match common dependency declaration patterns:
+		//   "marimo"  "marimo>=1.0"  'marimo'  'marimo>=1.0'
+		if strings.Contains(trimmed, `"marimo"`) ||
+			strings.Contains(trimmed, `"marimo>`) ||
+			strings.Contains(trimmed, `"marimo<`) ||
+			strings.Contains(trimmed, `"marimo=`) ||
+			strings.Contains(trimmed, `"marimo~`) ||
+			strings.Contains(trimmed, `"marimo!`) ||
+			strings.Contains(trimmed, `'marimo'`) ||
+			strings.Contains(trimmed, `'marimo>`) ||
+			strings.Contains(trimmed, `'marimo<`) ||
+			strings.Contains(trimmed, `'marimo=`) ||
+			strings.Contains(trimmed, `'marimo~`) ||
+			strings.Contains(trimmed, `'marimo!`) {
+			return true
+		}
+	}
+	return false
 }
 
 func main() {
@@ -47,8 +76,12 @@ func main() {
 	notebook := filepath.Base(selected)
 	runCmd := selectRunner(selected)
 
+	// Sanitize values for safe batch-file interpolation: double any '%' so
+	// cmd.exe doesn't treat them as variable references, and quote paths.
+	safeDirArg := strings.ReplaceAll(notebookDir, "%", "%%")
+	safeNameArg := strings.ReplaceAll(notebook, "%", "%%")
+
 	// Bootstrap uv if needed, then run
-	tmpDir := os.TempDir()
 	script := fmt.Sprintf(`@echo off
 powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force" >nul 2>&1
 where uv >nul 2>&1 || (
@@ -59,10 +92,17 @@ cd /d "%s"
 echo Launching %s ...
 %s "%s"
 pause
-`, notebookDir, notebook, runCmd, notebook)
+`, safeDirArg, safeNameArg, runCmd, safeNameArg)
 
-	batPath := filepath.Join(tmpDir, "notebook-launcher-run.bat")
-	os.WriteFile(batPath, []byte(script), 0644)
+	// Use a unique temp file to avoid races when launched multiple times.
+	batFile, err := os.CreateTemp("", "pyrunner-*.bat")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating temp file: %v\n", err)
+		os.Exit(1)
+	}
+	batPath := batFile.Name()
+	batFile.WriteString(script)
+	batFile.Close()
 
 	cmd := exec.Command("cmd", "/c", batPath)
 	cmd.Dir = notebookDir

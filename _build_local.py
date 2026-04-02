@@ -2,11 +2,12 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Build the macOS .app bundle locally for testing.
+"""Build pyrunner packages locally for testing.
 
 Usage:
-    uv run _build_local.py          # build into dist/
-    uv run _build_local.py -o       # build and open the .app
+    uv run _build_local.py                        # build for current platform
+    uv run _build_local.py -o                     # build and open the .app (macOS)
+    uv run _build_local.py -t all                 # build both mac and windows
 """
 
 import argparse
@@ -40,8 +41,8 @@ def build_mac() -> Path:
     return app.parent
 
 
-def build_windows() -> Path:
-    exe_dir = DIST / "pyrunner-windows"
+def build_windows(arch: str = "amd64") -> Path:
+    exe_dir = DIST / f"pyrunner-windows-{arch}"
     exe_dir.mkdir(parents=True, exist_ok=True)
 
     if shutil.which("go") is None:
@@ -55,7 +56,7 @@ def build_windows() -> Path:
         ["go", "build", "-ldflags", "-s -w", "-o", str(exe_dir / "pyrunner.exe"), "."],
         cwd=ROOT / "windows",
         check=True,
-        env={**__import__("os").environ, "GOOS": "windows", "GOARCH": "amd64"},
+        env={**__import__("os").environ, "GOOS": "windows", "GOARCH": arch},
     )
 
     print(f"Built: {exe_dir / 'pyrunner.exe'}")
@@ -70,20 +71,29 @@ def main() -> None:
         action="store_true",
         help="Open the .app after building (macOS only)",
     )
+    parser.add_argument(
+        "-t",
+        "--target",
+        choices=["mac", "windows", "all"],
+        default=None,
+        help="Target platform (default: current platform)",
+    )
     args = parser.parse_args()
 
     system = platform.system()
-    if system == "Darwin":
-        result = build_mac()
-        if args.open:
-            subprocess.run(["open", str(result)])
-    elif system == "Windows":
-        build_windows()
-        if args.open:
-            print("Note: --open is only supported on macOS.")
-    else:
-        print(f"Unsupported platform: {system}", file=sys.stderr)
-        sys.exit(1)
+    target = args.target or ("mac" if system == "Darwin" else "windows")
+    targets = ["mac", "windows"] if target == "all" else [target]
+
+    for t in targets:
+        if t == "mac":
+            result = build_mac()
+            if args.open and system == "Darwin":
+                subprocess.run(["open", str(result)])
+        elif t == "windows":
+            for arch in ("amd64", "arm64"):
+                build_windows(arch)
+            if args.open:
+                print("Note: --open is only supported on macOS.")
 
 
 if __name__ == "__main__":

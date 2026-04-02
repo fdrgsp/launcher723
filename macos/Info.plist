@@ -10,6 +10,8 @@
     <string>com.pyrunner.app</string>
     <key>CFBundleVersion</key>
     <string>1.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleExecutable</key>
