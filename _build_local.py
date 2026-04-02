@@ -35,9 +35,12 @@ def build_mac() -> Path:
     subprocess.run(
         [
             "cc",
-            "-arch", "arm64",
-            "-arch", "x86_64",
-            "-o", str(launch_bin),
+            "-arch",
+            "arm64",
+            "-arch",
+            "x86_64",
+            "-o",
+            str(launch_bin),
             str(ROOT / "macos" / "launch.c"),
         ],
         check=True,
