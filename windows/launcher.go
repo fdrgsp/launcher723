@@ -144,6 +144,7 @@ pause
 	batPath := batFile.Name()
 	batFile.WriteString(script)
 	batFile.Close()
+	defer os.Remove(batPath)
 
 	cmd := exec.Command("cmd", "/c", batPath)
 	cmd.Dir = notebookDir
@@ -151,6 +152,4 @@ pause
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Run()
-
-	os.Remove(batPath)
 }
