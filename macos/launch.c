@@ -12,7 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 
-int main(void) {
+int main(int argc, char *argv[]) {
     char path[4096];
     uint32_t size = sizeof(path);
 
@@ -27,7 +27,11 @@ int main(void) {
     }
     strcpy(last_slash + 1, "launch.sh");
 
-    execl("/bin/bash", "bash", path, (char *)NULL);
+    if (argc > 1) {
+        execl("/bin/bash", "bash", path, argv[1], (char *)NULL);
+    } else {
+        execl("/bin/bash", "bash", path, (char *)NULL);
+    }
     /* execl only returns on error */
     perror("execl");
     return 1;

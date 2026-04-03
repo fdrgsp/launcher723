@@ -27,6 +27,7 @@ repos:
     rev: v1.15.0
     hooks:
       - id: mypy
+        exclude: "examples/"
 
   - repo: https://github.com/abravalheri/validate-pyproject
     rev: v0.24.1

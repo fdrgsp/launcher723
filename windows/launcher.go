@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-var marimoModeRe = regexp.MustCompile(`^#\s+marimo-mode\s*=\s*["']([a-z]+)["']`)
+var marimoModeRe = regexp.MustCompile(`^#\s*marimo-mode\s*=\s*["']([a-z]+)["']`)
 
 // marimoMode reads the [pyrunner] section inside the # /// script block and
 // returns the marimo-mode value ("run", "edit", or "" if not set).
@@ -144,6 +144,7 @@ pause
 	batPath := batFile.Name()
 	batFile.WriteString(script)
 	batFile.Close()
+	defer os.Remove(batPath)
 
 	cmd := exec.Command("cmd", "/c", batPath)
 	cmd.Dir = notebookDir
@@ -151,6 +152,4 @@ pause
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 	cmd.Run()
-
-	os.Remove(batPath)
 }

@@ -51,6 +51,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*.py" = ["D", "S"]
+"examples/*.py" = ["D", "B018"]
 
 # https://docs.astral.sh/ruff/formatter/
 [tool.ruff.format]
@@ -60,6 +61,7 @@ skip-magic-trailing-comma = false # default is false
 # mypy
 [tool.mypy]
 files = ["_build_local.py", "tests"]
+exclude = ["examples/"]
 strict = true
 disallow_any_generics = false
 disallow_subclassing_any = false
@@ -73,3 +75,4 @@ module = [
 ]
 disallow_untyped_defs = false
 disallow_untyped_calls = false
+
