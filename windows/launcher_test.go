@@ -21,6 +21,7 @@ var selectRunnerTests = []struct {
 	{"py with single-quoted marimo edit mode", "nb.py", "# /// script\n# dependencies = [\n#   'marimo',\n# ]\n#\n# [pyrunner]\n# marimo-mode = \"edit\"\n# ///\n", "uvx marimo edit --sandbox"},
 	{"py with unrelated marimo mention uses uv run", "script.py", "# this is not marimo_extra related", "uv run"},
 	{"py with marimo dep no pyrunner section defaults to edit", "nb.py", "# /// script\n# dependencies = [\n#   \"marimo\",\n# ]\n# ///\n", "uvx marimo edit --sandbox"},
+	{"py with marimo dep run mode no spaces", "nb.py", "# /// script\n# dependencies = [\n#   \"marimo\",\n# ]\n#\n#[pyrunner]\n#marimo-mode = \"run\"\n# ///\n", "uvx marimo run --sandbox"},
 }
 
 func TestSelectRunner(t *testing.T) {

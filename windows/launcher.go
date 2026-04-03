@@ -12,7 +12,7 @@ import (
 	"strings"
 )
 
-var marimoModeRe = regexp.MustCompile(`^#\s+marimo-mode\s*=\s*["']([a-z]+)["']`)
+var marimoModeRe = regexp.MustCompile(`^#\s*marimo-mode\s*=\s*["']([a-z]+)["']`)
 
 // marimoMode reads the [pyrunner] section inside the # /// script block and
 // returns the marimo-mode value ("run", "edit", or "" if not set).

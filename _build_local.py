@@ -84,8 +84,12 @@ def main() -> None:
     parser.add_argument(
         "-o",
         "--open",
-        action="store_true",
-        help="Open the .app after building (macOS only)",
+        nargs="?",
+        const=True,
+        default=None,
+        metavar="FILE",
+        help="Open the .app after building (macOS only). "
+        "Optionally pass a file path to open directly.",
     )
     parser.add_argument(
         "-t",
@@ -103,8 +107,11 @@ def main() -> None:
     for t in targets:
         if t == "mac":
             result = build_mac()
-            if args.open and system == "Darwin":
-                subprocess.run(["open", str(result)])
+            if args.open is not None and system == "Darwin":
+                cmd = ["open", str(result)]
+                if isinstance(args.open, str):
+                    cmd += ["--args", str(Path(args.open).resolve())]
+                subprocess.run(cmd)
         elif t == "windows":
             for arch in ("amd64", "arm64"):
                 build_windows(arch)

@@ -6,7 +6,7 @@
 # Outputs "run", "edit", or "" if not specified.
 marimo_mode() {
   local file="$1" in_block=0 in_section=0
-  local re=$'^#[[:space:]]+marimo-mode[[:space:]]*=[[:space:]]*["\']([a-z]+)["\']'
+  local re=$'^#[[:space:]]*marimo-mode[[:space:]]*=[[:space:]]*["\']([a-z]+)["\']'
   while IFS= read -r line; do
     if [[ $in_block -eq 0 ]]; then
       [[ "$line" == "# /// script" ]] && in_block=1
@@ -48,12 +48,17 @@ select_runner() {
 
 _main() {
   local NOTEBOOK
-  NOTEBOOK=$(osascript -e 'try
-    set theFile to choose file with prompt "Select a notebook (.ipynb or .py):" of type {"public.item"} default location (path to home folder)
-    return POSIX path of theFile
-  on error
-    return ""
-  end try' 2>/dev/null)
+
+  if [ -n "$1" ] && [ -f "$1" ]; then
+    NOTEBOOK="$1"
+  else
+    NOTEBOOK=$(osascript -e 'try
+      set theFile to choose file with prompt "Select a notebook (.ipynb or .py):" of type {"public.item"} default location (path to home folder)
+      return POSIX path of theFile
+    on error
+      return ""
+    end try' 2>/dev/null)
+  fi
 
   if [ -z "$NOTEBOOK" ]; then
     exit 0
@@ -102,4 +107,4 @@ BODY
 }
 
 # Allow sourcing this file for testing without running the launcher.
-if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then _main; fi
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then _main "$@"; fi
