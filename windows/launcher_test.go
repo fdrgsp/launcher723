@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -62,6 +63,48 @@ func TestMarimoMode(t *testing.T) {
 				t.Errorf("expected %q, got %q", tc.expected, got)
 			}
 		})
+	}
+}
+
+func TestBuildBatchScript(t *testing.T) {
+	script := buildBatchScript(`C:\Users\me\nbs`, "demo.ipynb", "uvx juv run")
+
+	// The bootstrap must skip install when uv is present, pin the install dir
+	// to a known location, and add exactly that dir to PATH so the freshly
+	// installed uv is found without reopening the terminal.
+	wantLines := []string{
+		`where uv >nul 2>&1 && goto run`,
+		`if not defined UV_INSTALL_DIR set "UV_INSTALL_DIR=%USERPROFILE%\.local\bin"`,
+		`set "PATH=%UV_INSTALL_DIR%;%PATH%"`,
+		`:run`,
+		`cd /d "C:\Users\me\nbs"`,
+		`uvx juv run "demo.ipynb"`,
+		`pause`,
+	}
+	for _, want := range wantLines {
+		if !strings.Contains(script, "\n"+want+"\n") {
+			t.Errorf("script missing line %q\n--- script ---\n%s", want, script)
+		}
+	}
+
+	// Batch commands and especially the :run label must sit at column 0; a
+	// leading tab/space (e.g. from a raw-string reindent) can break goto.
+	for _, line := range strings.Split(script, "\n") {
+		if line != strings.TrimLeft(line, " \t") {
+			t.Errorf("batch line is indented (would corrupt the .bat): %q", line)
+		}
+	}
+}
+
+func TestBuildBatchScriptEscapesPercent(t *testing.T) {
+	// '%' in the dir/name must be doubled so cmd.exe treats it literally
+	// instead of as a %VAR% reference.
+	script := buildBatchScript(`C:\50%done`, "ab%cd.py", "uv run")
+	if !strings.Contains(script, `cd /d "C:\50%%done"`) {
+		t.Errorf("directory '%%' not doubled in:\n%s", script)
+	}
+	if !strings.Contains(script, `uv run "ab%%cd.py"`) {
+		t.Errorf("filename '%%' not doubled in:\n%s", script)
 	}
 }
 
