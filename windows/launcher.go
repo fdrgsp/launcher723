@@ -122,13 +122,19 @@ func main() {
 	safeDirArg := strings.ReplaceAll(notebookDir, "%", "%%")
 	safeNameArg := strings.ReplaceAll(notebook, "%", "%%")
 
-	// Bootstrap uv if needed, then run
+	// Bootstrap uv if needed, then run. If uv is missing we pin UV_INSTALL_DIR
+	// (unless the user already set it) so the installer lands uv in a known
+	// location, then add exactly that dir to the current session's PATH — the
+	// installer only updates PATH for *future* shells, so without this the
+	// freshly-installed uv wouldn't be found until the terminal is reopened.
 	script := fmt.Sprintf(`@echo off
 powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force" >nul 2>&1
-where uv >nul 2>&1 || (
-    echo Installing uv...
-    powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"
-)
+where uv >nul 2>&1 && goto run
+echo Installing uv...
+if not defined UV_INSTALL_DIR set "UV_INSTALL_DIR=%%USERPROFILE%%\.local\bin"
+powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"
+set "PATH=%%UV_INSTALL_DIR%%;%%PATH%%"
+:run
 cd /d "%s"
 echo Launching %s ...
 %s "%s"
