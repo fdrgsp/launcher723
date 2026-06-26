@@ -93,6 +93,35 @@ func isMarimo(content string) bool {
 	return false
 }
 
+// buildBatchScript returns the cmd.exe batch script that bootstraps uv (if
+// missing) and runs the notebook with runCmd (e.g. "uvx juv run").
+//
+// If uv is missing we pin UV_INSTALL_DIR (unless the user already set it) so
+// the installer lands uv in a known location, then add exactly that dir to the
+// current session's PATH — the installer only updates PATH for *future* shells,
+// so without this the freshly-installed uv wouldn't be found until the terminal
+// is reopened.
+//
+// notebookDir/notebook are interpolated with any '%' doubled so cmd.exe treats
+// them literally rather than as variable references.
+func buildBatchScript(notebookDir, notebook, runCmd string) string {
+	safeDir := strings.ReplaceAll(notebookDir, "%", "%%")
+	safeName := strings.ReplaceAll(notebook, "%", "%%")
+	return fmt.Sprintf(`@echo off
+powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force" >nul 2>&1
+where uv >nul 2>&1 && goto run
+echo Installing uv...
+if not defined UV_INSTALL_DIR set "UV_INSTALL_DIR=%%USERPROFILE%%\.local\bin"
+powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"
+set "PATH=%%UV_INSTALL_DIR%%;%%PATH%%"
+:run
+cd /d "%s"
+echo Launching %s ...
+%s "%s"
+pause
+`, safeDir, safeName, runCmd, safeName)
+}
+
 func main() {
 	// Show file picker for .ipynb and .py files
 	out, err := exec.Command("powershell", "-NoProfile", "-Command", `
@@ -117,23 +146,7 @@ func main() {
 	notebookDir := filepath.Dir(selected)
 	notebook := filepath.Base(selected)
 
-	// Sanitize values for safe batch-file interpolation: double any '%' so
-	// cmd.exe doesn't treat them as variable references, and quote paths.
-	safeDirArg := strings.ReplaceAll(notebookDir, "%", "%%")
-	safeNameArg := strings.ReplaceAll(notebook, "%", "%%")
-
-	// Bootstrap uv if needed, then run
-	script := fmt.Sprintf(`@echo off
-powershell -ExecutionPolicy Bypass -Command "Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force" >nul 2>&1
-where uv >nul 2>&1 || (
-    echo Installing uv...
-    powershell -ExecutionPolicy Bypass -c "irm https://astral.sh/uv/install.ps1 | iex"
-)
-cd /d "%s"
-echo Launching %s ...
-%s "%s"
-pause
-`, safeDirArg, safeNameArg, runCmd, safeNameArg)
+	script := buildBatchScript(notebookDir, notebook, runCmd)
 
 	// Use a unique temp file to avoid races when launched multiple times.
 	batFile, err := os.CreateTemp("", "pyrunner-*.bat")
