@@ -1,9 +1,10 @@
 // Windows .exe launcher — opens a file picker for .ipynb/.py files, then runs
-// with uvx juv run (Jupyter), uvx marimo run/edit --sandbox (marimo), or uv run (plain .py).
+// with uvx juv run/exec (Jupyter), uvx marimo run/edit --sandbox (marimo), or uv run (plain .py).
 
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -13,10 +14,12 @@ import (
 )
 
 var marimoModeRe = regexp.MustCompile(`^#\s*marimo-mode\s*=\s*["']([a-z]+)["']`)
+var juvModeRe = regexp.MustCompile(`^#\s*juv-mode\s*=\s*["']([a-z]+)["']`)
 
-// marimoMode reads the [pyrunner] section inside the # /// script block and
-// returns the marimo-mode value ("run", "edit", or "" if not set).
-func marimoMode(content string) string {
+// scanPyrunnerKey scans plain-text lines for a "# /// script" ... "# ///"
+// block and returns the value of keyRe inside its [pyrunner] section, or ""
+// if the block, section, or key is missing.
+func scanPyrunnerKey(content string, keyRe *regexp.Regexp) string {
 	inBlock := false
 	inSection := false
 	for _, line := range strings.Split(content, "\n") {
@@ -40,9 +43,37 @@ func marimoMode(content string) string {
 			if rest := strings.TrimSpace(strings.TrimPrefix(line, "#")); strings.HasPrefix(rest, "[") {
 				break
 			}
-			if m := marimoModeRe.FindStringSubmatch(line); m != nil {
+			if m := keyRe.FindStringSubmatch(line); m != nil {
 				return m[1]
 			}
+		}
+	}
+	return ""
+}
+
+// marimoMode reads the [pyrunner] section inside the # /// script block and
+// returns the marimo-mode value ("run", "edit", or "" if not set).
+func marimoMode(content string) string {
+	return scanPyrunnerKey(content, marimoModeRe)
+}
+
+// juvMode reads the [pyrunner] section inside an .ipynb file's hidden # ///
+// script metadata cell and returns the juv-mode value ("run", "exec", or ""
+// if not set). Unlike .py files, the block lives inside a JSON cell's
+// "source" array, so each cell's source lines are joined into plain text
+// (which un-escapes the JSON string for us) before scanning.
+func juvMode(content string) string {
+	var nb struct {
+		Cells []struct {
+			Source []string `json:"source"`
+		} `json:"cells"`
+	}
+	if err := json.Unmarshal([]byte(content), &nb); err != nil {
+		return ""
+	}
+	for _, cell := range nb.Cells {
+		if mode := scanPyrunnerKey(strings.Join(cell.Source, ""), juvModeRe); mode != "" {
+			return mode
 		}
 	}
 	return ""
@@ -51,6 +82,14 @@ func marimoMode(content string) string {
 // selectRunner returns the run command for the given notebook file path.
 func selectRunner(notebookPath string) string {
 	if strings.HasSuffix(notebookPath, ".ipynb") {
+		content, err := os.ReadFile(notebookPath)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: cannot read %s: %v\n", notebookPath, err)
+			return "uvx juv run"
+		}
+		if juvMode(string(content)) == "exec" {
+			return "uvx juv exec"
+		}
 		return "uvx juv run"
 	}
 	content, err := os.ReadFile(notebookPath)

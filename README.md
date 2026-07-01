@@ -48,7 +48,7 @@ Under the hood, pyrunner uses [uv](https://docs.astral.sh/uv/) to run scripts in
 
 ### Jupyter notebooks (`.ipynb`)
 
-The launcher runs `.ipynb` files using `uvx juv run`, which requires each notebook to declare its dependencies inline using [PEP 723](https://peps.python.org/pep-0723/) script metadata.
+The launcher runs `.ipynb` files using `uvx juv run` by default (or `uvx juv exec` — see [below](#running-headlessly-juv-mode)), which requires each notebook to declare its dependencies inline using [PEP 723](https://peps.python.org/pep-0723/) script metadata.
 
 #### Option 1: Use `juv add` (recommended)
 
@@ -80,6 +80,37 @@ Add a code cell at the top of your notebook with:
 ```
 
 This cell tells `juv` which packages to install in the isolated environment.
+
+#### Running headlessly (`juv-mode`)
+
+By default `.ipynb` files open in the Jupyter frontend in your browser (`juv run`). To instead run a notebook headlessly — executing every cell and printing output straight to the terminal, no browser involved — add a `[pyrunner]` section inside the `# /// script` cell. The easiest way to edit that cell is with `juv edit`, which opens it as plain text in your editor:
+
+```bash
+uvx juv edit my_notebook.ipynb
+```
+
+Add the section right after the dependencies list:
+
+```python
+# /// script
+# requires-python = ">=3.11"
+# dependencies = [
+#   "numpy>=1.26",
+# ]
+#
+# [pyrunner]
+# juv-mode = "exec"  # or "run" (default)
+# ///
+```
+
+Accepted values:
+
+| Value    | Effect                                                               |
+|----------|----------------------------------------------------------------------|
+| `"run"`  | Opens the notebook in the Jupyter frontend in your browser — default |
+| `"exec"` | Runs all cells headlessly in the terminal, like a plain script       |
+
+`juv` ignores the `[pyrunner]` section when running the notebook.
 
 ### Python scripts (`.py`)
 
@@ -135,7 +166,7 @@ Accepted values:
 | `"run"`  | Opens in read-only app mode (`marimo run`)                       |
 | `"edit"` | Opens in full editor mode (`marimo edit`) — this is the default  |
 
-`uv` ignores the `[pyrunner]` section when running the script — it only reads `requires-python`, `dependencies`, and `[tool.uv]`.
+`uv` ignores the `[pyrunner]` section when running the script.
 
 #### Plain Python scripts
 

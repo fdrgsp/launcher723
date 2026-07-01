@@ -1,11 +1,37 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+// ipynbWithHeader builds a minimal .ipynb JSON string with headerLines as the
+// source of the hidden PEP 723 metadata cell — mirrors what `juv add` produces.
+func ipynbWithHeader(headerLines []string) string {
+	nb := map[string]any{
+		"cells": []map[string]any{
+			{
+				"cell_type":       "code",
+				"execution_count": nil,
+				"id":              "meta",
+				"metadata":        map[string]any{"jupyter": map[string]any{"source_hidden": true}},
+				"outputs":         []any{},
+				"source":          headerLines,
+			},
+		},
+		"metadata":       map[string]any{},
+		"nbformat":       4,
+		"nbformat_minor": 5,
+	}
+	b, err := json.MarshalIndent(nb, "", " ")
+	if err != nil {
+		panic(err)
+	}
+	return string(b)
+}
 
 var selectRunnerTests = []struct {
 	name     string
@@ -14,6 +40,9 @@ var selectRunnerTests = []struct {
 	expected string
 }{
 	{"ipynb uses juv", "notebook.ipynb", "", "uvx juv run"},
+	{"ipynb with juv-mode exec", "notebook.ipynb", ipynbWithHeader([]string{"# /// script\n", "# [pyrunner]\n", "# juv-mode = \"exec\"\n", "# ///"}), "uvx juv exec"},
+	{"ipynb with juv-mode run explicit", "notebook.ipynb", ipynbWithHeader([]string{"# /// script\n", "# [pyrunner]\n", "# juv-mode = \"run\"\n", "# ///"}), "uvx juv run"},
+	{"ipynb with no pyrunner section defaults to run", "notebook.ipynb", ipynbWithHeader([]string{"# /// script\n", "# dependencies = [\n", "#   \"numpy\",\n", "# ]\n", "# ///"}), "uvx juv run"},
 	{"py with marimo dep edit mode", "nb.py", "# /// script\n# dependencies = [\n#   \"marimo\",\n# ]\n#\n# [pyrunner]\n# marimo-mode = \"edit\"\n# ///\n", "uvx marimo edit --sandbox"},
 	{"py with marimo dep run mode", "nb.py", "# /// script\n# dependencies = [\n#   \"marimo\",\n# ]\n#\n# [pyrunner]\n# marimo-mode = \"run\"\n# ///\n", "uvx marimo run --sandbox"},
 	{"py without marimo uses uv run", "script.py", "# dependencies = [\n#   \"numpy\",\n# ]", "uv run"},
@@ -66,6 +95,39 @@ func TestMarimoMode(t *testing.T) {
 	}
 }
 
+var juvModeTests = []struct {
+	name     string
+	header   []string
+	expected string
+}{
+	{"no script block", []string{"print('hi')\n"}, ""},
+	{"run mode", []string{"# /// script\n", "# [pyrunner]\n", "# juv-mode = \"run\"\n", "# ///"}, "run"},
+	{"exec mode", []string{"# /// script\n", "# [pyrunner]\n", "# juv-mode = \"exec\"\n", "# ///"}, "exec"},
+	{"single-quoted exec mode", []string{"# /// script\n", "# [pyrunner]\n", "# juv-mode = 'exec'\n", "# ///"}, "exec"},
+	{"no pyrunner section", []string{"# /// script\n", "# dependencies = [\n", "#   \"numpy\",\n", "# ]\n", "# ///"}, ""},
+	{"section without juv-mode", []string{"# /// script\n", "# [pyrunner]\n", "# other_key = \"value\"\n", "# ///"}, ""},
+	{"juv-mode after other keys", []string{"# /// script\n", "# [pyrunner]\n", "# other = \"x\"\n", "# juv-mode = \"exec\"\n", "# ///"}, "exec"},
+	{"trailing inline comment with another quoted mode value", []string{"# /// script\n", "# [pyrunner]\n", "# juv-mode = \"exec\"  # or \"run\" (default)\n", "# ///"}, "exec"},
+	{"malformed json defaults to empty", []string{}, ""},
+}
+
+func TestJuvMode(t *testing.T) {
+	for _, tc := range juvModeTests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := juvMode(ipynbWithHeader(tc.header))
+			if got != tc.expected {
+				t.Errorf("expected %q, got %q", tc.expected, got)
+			}
+		})
+	}
+
+	t.Run("invalid json returns empty", func(t *testing.T) {
+		if got := juvMode("not json"); got != "" {
+			t.Errorf("expected empty string for invalid JSON, got %q", got)
+		}
+	})
+}
+
 func TestBuildBatchScript(t *testing.T) {
 	script := buildBatchScript(`C:\Users\me\nbs`, "demo.ipynb", "uvx juv run")
 
@@ -107,4 +169,3 @@ func TestBuildBatchScriptEscapesPercent(t *testing.T) {
 		t.Errorf("filename '%%' not doubled in:\n%s", script)
 	}
 }
-

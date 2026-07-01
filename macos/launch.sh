@@ -1,6 +1,6 @@
 #!/bin/bash
 # macOS .app launcher — opens a file picker for .ipynb/.py files, then runs
-# with uvx juv run (Jupyter), uvx marimo run/edit --sandbox (marimo), or uv run (plain .py).
+# with uvx juv run/exec (Jupyter), uvx marimo run/edit --sandbox (marimo), or uv run (plain .py).
 
 # Extracts marimo_mode from the # /// pyrunner block in a .py file.
 # Outputs "run", "edit", or "" if not specified.
@@ -24,11 +24,47 @@ marimo_mode() {
   done < "$file"
 }
 
+# Extracts juv_mode from the # /// script block inside an .ipynb file's hidden
+# metadata cell. Unlike .py files, that block is embedded as a JSON array of
+# quoted, backslash-escaped source lines rather than raw text, so each line is
+# unwrapped/unescaped before running the same [pyrunner] scan used for marimo.
+# Outputs "run", "exec", or "" if not specified.
+juv_mode() {
+  local file="$1" in_block=0 in_section=0 line content
+  local unwrap=$'^[[:space:]]*"(.*)"[,]?[[:space:]]*$'
+  local re=$'^#[[:space:]]*juv-mode[[:space:]]*=[[:space:]]*["\']([a-z]+)["\']'
+  while IFS= read -r line; do
+    [[ "$line" =~ $unwrap ]] || continue
+    content="${BASH_REMATCH[1]}"
+    content="${content%\\n}"
+    content="${content//\\\"/\"}"
+    if [[ $in_block -eq 0 ]]; then
+      [[ "$content" == "# /// script" ]] && in_block=1
+    elif [[ $in_section -eq 0 ]]; then
+      [[ "$content" == "# ///" ]] && break
+      [[ "${content#\#}" =~ ^[[:space:]]*\[pyrunner\] ]] && in_section=1
+    else
+      [[ "$content" == "# ///" ]] && break
+      [[ "$content" =~ ^#[[:space:]]*\[ ]] && break
+      if [[ "$content" =~ $re ]]; then
+        echo "${BASH_REMATCH[1]}"
+        return
+      fi
+    fi
+  done < "$file"
+}
+
 # Outputs the run command for the given notebook file path.
 select_runner() {
   local notebook="$1"
   case "$notebook" in
-    *.ipynb) echo "uvx juv run" ;;
+    *.ipynb)
+      if [[ "$(juv_mode "$notebook")" == "exec" ]]; then
+        echo "uvx juv exec"
+      else
+        echo "uvx juv run"
+      fi
+      ;;
     *.py)
       # Match PEP 723 dependency patterns: "marimo", "marimo>=1", 'marimo', etc.
       # Anchored to quote + "marimo" + (quote or version specifier) to avoid
