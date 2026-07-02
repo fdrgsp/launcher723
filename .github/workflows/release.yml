@@ -2,10 +2,6 @@ name: Release
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "macos/**"
-      - "windows/**"
     tags:
       - "v*"
   workflow_dispatch:
@@ -16,20 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set release tag
-        id: tag
-        run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            echo "value=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=latest" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Build macOS .app
-        env:
-          TAG: ${{ steps.tag.outputs.value }}
         run: |
-          TARGET="dist/pyrunner-${TAG}-mac/pyrunner.app/Contents"
+          TARGET="dist/pyrunner-mac/pyrunner.app/Contents"
           mkdir -p "$TARGET/MacOS" "$TARGET/Resources"
           cp macos/Info.plist "$TARGET/Info.plist"
           cp macos/icon.icns "$TARGET/Resources/icon.icns"
@@ -41,7 +26,7 @@ jobs:
           cp macos/launch.sh "$TARGET/MacOS/launch.sh"
           chmod +x "$TARGET/MacOS/launch.sh"
 
-          cd dist && zip -r "pyrunner-${TAG}-mac.zip" "pyrunner-${TAG}-mac/" && cd ..
+          cd dist && zip -r "pyrunner-mac.zip" "pyrunner-mac/" && cd ..
 
       - uses: actions/upload-artifact@v4
         with:
@@ -52,15 +37,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set release tag
-        id: tag
-        run: |
-          if [ "${{ github.ref_type }}" = "tag" ]; then
-            echo "value=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=latest" >> "$GITHUB_OUTPUT"
-          fi
 
       - name: Install go-winres
         run: |
@@ -74,18 +50,16 @@ jobs:
           cd ..
 
       - name: Build Windows packages
-        env:
-          TAG: ${{ steps.tag.outputs.value }}
         run: |
           mkdir -p dist
 
           # Windows amd64 (.exe)
-          cd windows && GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o "../dist/pyrunner-${TAG}-windows-amd64/pyrunner.exe" . && cd ..
-          cd dist && zip -r "pyrunner-${TAG}-windows-amd64.zip" "pyrunner-${TAG}-windows-amd64/" && cd ..
+          cd windows && GOOS=windows GOARCH=amd64 go build -ldflags "-s -w" -o "../dist/pyrunner-windows-amd64/pyrunner.exe" . && cd ..
+          cd dist && zip -r "pyrunner-windows-amd64.zip" "pyrunner-windows-amd64/" && cd ..
 
           # Windows arm64 (.exe)
-          cd windows && GOOS=windows GOARCH=arm64 go build -ldflags "-s -w" -o "../dist/pyrunner-${TAG}-windows-arm64/pyrunner.exe" . && cd ..
-          cd dist && zip -r "pyrunner-${TAG}-windows-arm64.zip" "pyrunner-${TAG}-windows-arm64/" && cd ..
+          cd windows && GOOS=windows GOARCH=arm64 go build -ldflags "-s -w" -o "../dist/pyrunner-windows-arm64/pyrunner.exe" . && cd ..
+          cd dist && zip -r "pyrunner-windows-arm64.zip" "pyrunner-windows-arm64/" && cd ..
 
       - uses: actions/upload-artifact@v4
         with:
@@ -95,6 +69,7 @@ jobs:
   release:
     needs: [build-mac, build-windows]
     runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
     permissions:
       contents: write
     steps:
@@ -103,17 +78,7 @@ jobs:
           path: dist
           merge-multiple: true
 
-      - name: Publish latest pre-release (main push)
-        if: github.ref_type == 'branch'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: Latest
-          prerelease: true
-          files: dist/*.zip
-
-      - name: Publish versioned release (tag push)
-        if: github.ref_type == 'tag'
+      - name: Publish versioned release
         uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true

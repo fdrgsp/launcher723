@@ -6,9 +6,9 @@ Files must declare their dependencies using the [PEP 723](https://peps.python.or
 
 ## Download
 
-| macOS                                                                                                              | Windows (Intel/AMD)                                                                                                           | Windows (ARM)                                                                                                                  |
-|--------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------|
-| 🚀 [Download .app](https://github.com/fdrgsp/pyrunner/releases/download/latest/pyrunner-latest-mac.zip)      | 🚀 [Download .exe](https://github.com/fdrgsp/pyrunner/releases/download/latest/pyrunner-latest-windows-amd64.zip)       | 🚀 [Download .exe](https://github.com/fdrgsp/pyrunner/releases/download/latest/pyrunner-latest-windows-arm64.zip)        |
+| macOS                                                                                            | Windows (Intel/AMD)                                                                                        | Windows (ARM)                                                                                              |
+|--------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------|
+| 🚀 [Download .app](https://github.com/fdrgsp/pyrunner/releases/latest/download/pyrunner-mac.zip) | 🚀 [Download .exe](https://github.com/fdrgsp/pyrunner/releases/latest/download/pyrunner-windows-amd64.zip) | 🚀 [Download .exe](https://github.com/fdrgsp/pyrunner/releases/latest/download/pyrunner-windows-arm64.zip) |
 
 ## How it works
 
